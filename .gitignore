@@ -73,6 +73,12 @@ captures/
 .idea/libraries
 .idea/caches
 
+android/.project
+android/.settings/
+android/app/.classpath
+android/app/.project
+android/app/.settings/
+
 # Keystore files
 # Uncomment the following line if you do not want to check your keystore files in.
 #*.jks

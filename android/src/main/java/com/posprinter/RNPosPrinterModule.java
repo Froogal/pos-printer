@@ -14,13 +14,21 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableType;
+import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.hoin.usbsdk.UsbController;
+import com.posprinter.adapter.USBPrinterAdapter;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,15 +38,20 @@ import java.util.Map;
 public class RNPosPrinterModule extends ReactContextBaseJavaModule {
 
   private int[][] u_infor;
+  private ArrayList<int[]> printerIds;
   private UsbController usbCtrl = null;
   private UsbDevice dev = null;
+  private USBPrinterAdapter adapter;
 
 
   public RNPosPrinterModule(ReactApplicationContext reactContext) {
     super(reactContext);
+    this.adapter = USBPrinterAdapter.getInstance();
+    this.adapter.init(reactContext);
+    printerIds = new ArrayList<int[]>();
     u_infor = new int[12][2];
-    u_infor[0][0] = 0x0D3A;
-    u_infor[0][1] = 0x037C;
+    u_infor[0][0] = 0x0D3A; //vendor id
+    u_infor[0][1] = 0x037C; //product id
 
     u_infor[1][0] = 0x05C6;
     u_infor[1][1] = 0x904C;
@@ -72,11 +85,46 @@ public class RNPosPrinterModule extends ReactContextBaseJavaModule {
 
     u_infor[11][0] = 0x0525;
     u_infor[11][1] = 0xa700;
+
+    printerIds.addAll(Arrays.asList(u_infor));
   }
 
   @Override
   public String getName() {
     return "RNPosPrinter";
+  }
+
+  @ReactMethod
+  public void getUSBDeviceList(ReadableArray printerVendorAndProductIds, Promise promise) {
+    List<UsbDevice> usbDevices = adapter.getDeviceList();
+    int[][] tempArray = new int[usbDevices.size()][2];
+    int[][] pVendorAndProductIds = new int[printerVendorAndProductIds.size()][2];
+    WritableArray pairedDeviceList = Arguments.createArray();
+    for (int i = 0; i < usbDevices.size(); i++) {
+      UsbDevice usbDevice = usbDevices.get(i);
+      WritableMap deviceMap = Arguments.createMap();
+      String manufacturerName = usbDevice.getManufacturerName() != null ? usbDevice.getManufacturerName().trim() : "";
+      deviceMap.putString("displayName", manufacturerName);
+      deviceMap.putString("name", "usb://"+manufacturerName+"@"+usbDevice.getDeviceName());
+      deviceMap.putInt("device_id", usbDevice.getDeviceId());
+      deviceMap.putInt("vendor_id", usbDevice.getVendorId());
+      deviceMap.putInt("product_id", usbDevice.getProductId());
+      deviceMap.putString("type", "other");
+      pairedDeviceList.pushMap(deviceMap);
+
+      tempArray[i][0] = usbDevice.getVendorId();
+      tempArray[i][1] = usbDevice.getProductId();
+      promise.resolve(pairedDeviceList);
+    }
+    printerIds.addAll(Arrays.asList(tempArray));
+    for (int i = 0; i < printerVendorAndProductIds.size(); i++) {
+      ReadableMap map = printerVendorAndProductIds.getMap(i);
+      pVendorAndProductIds[i][0] = map.getInt("vendorId");
+      pVendorAndProductIds[i][1] = map.getInt("productId");
+    }
+    if (pVendorAndProductIds.length > 0) {
+      printerIds.addAll(Arrays.asList(pVendorAndProductIds));
+    }
   }
 
   @ReactMethod
@@ -97,8 +145,8 @@ public class RNPosPrinterModule extends ReactContextBaseJavaModule {
       }
       if (usbCtrl != null) {
         usbCtrl.close();
-        for (int i = 0; i < u_infor.length; i++) {
-          dev = usbCtrl.getDev(u_infor[i][0], u_infor[i][1]);
+        for (int i = 0; i < printerIds.size(); i++) {
+          dev = usbCtrl.getDev(printerIds.get(i)[0], printerIds.get(i)[1]);
           if (dev != null)
             break;
         }

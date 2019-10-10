@@ -114,7 +114,6 @@ public class RNPosPrinterModule extends ReactContextBaseJavaModule {
 
       tempArray[i][0] = usbDevice.getVendorId();
       tempArray[i][1] = usbDevice.getProductId();
-      promise.resolve(pairedDeviceList);
     }
     printerIds.addAll(Arrays.asList(tempArray));
     for (int i = 0; i < printerVendorAndProductIds.size(); i++) {
@@ -125,6 +124,7 @@ public class RNPosPrinterModule extends ReactContextBaseJavaModule {
     if (pVendorAndProductIds.length > 0) {
       printerIds.addAll(Arrays.asList(pVendorAndProductIds));
     }
+    promise.resolve(pairedDeviceList);
   }
 
   @ReactMethod

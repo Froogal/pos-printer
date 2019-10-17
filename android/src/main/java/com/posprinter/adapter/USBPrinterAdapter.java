@@ -1,4 +1,4 @@
-package com.posprinter;
+package com.posprinter.adapter;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
